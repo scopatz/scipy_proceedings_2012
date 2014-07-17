@@ -8,17 +8,15 @@ Total Recall: flmake and the Quest for Reproducibility
 
 .. class:: abstract
 
-    FLASH is a high-performance computing (HPC) multi-physics code which is used to perform
-    astrophysical and high-energy density physics simulations.  
-    To run a FLASH simulation, the user must go through three basic steps: setup, build, and
-    execution.  Canonically, each of these tasks are independently handled by the user.
-    However, with the recent advent of flmake - a Python workflow management utility for
-    FLASH - such tasks may now be performed in a fully reproducible way.
-    To achieve such reproducibility a number of developments and abstractions were needed, 
-    some only enabled by Python.  These methods are widely applicable outside of FLASH.
-    The process of writing flmake opens many questions to what precisely is meant 
-    by reproducibility in computational science.  While posed here, many of these 
-    questions remain unanswered.
+    FLASH is a high-performance computing (HPC) multi-physics code which is used 
+    to perform astrophysical and high-energy density physics simulations.  
+    To run a FLASH simulation, the user must go through three basic steps: setup, 
+    build, and execution.  Canonically, each of these tasks are independently 
+    handled by the user. However, with the recent advent of flmake - a Python 
+    workflow management utility for FLASH - such tasks may be performed in a 
+    fully reproducible way. The methods that flmake implements are widely applicable 
+    outside of the FLASH code. This paper aims to disseminate these methods and, 
+    more importantly, an example user interface for them.
 
 .. class:: keywords
 
@@ -36,16 +34,24 @@ primarily in Fortran and merged into a single project.  Over the past 13 years m
 sections have been rewritten in other languages.  For instance, I/O is now implemented
 in C.  However building, testing, and documentation are all performed in Python.
 
-FLASH has a unique architecture which compiles *simulation specific* executables for each
-new type of run.  This is aided by an object-oriented-esque inheritance model that is
-implemented by inspecting the file system directory tree.  This allows FLASH to
+FLASH has a unique architecture which compiles *simulation specific* executables for 
+each new type of run.  This is aided by an object-oriented-esque inheritance model 
+that is implemented by inspecting the file system directory tree.  This allows FLASH to
 compile to faster machine code than a compile-once strategy.  However it also
 places a greater importance on the Python build system.
 
 To run a FLASH simulation, the user must go through three basic steps: setup, build, and
 execution.  Canonically, each of these tasks are independently handled by the user.
 However with the recent advent of flmake - a Python workflow management utility for
-FLASH - such tasks may now be performed in a repeatable way [FLMAKE]_.
+FLASH - such tasks may now be performed in a fully automated way [FLMAKE]_.
+
+Since FLASH produces a different binary executable for every simulation, a 
+run of FLASH may be *reproduced* if and only if sufficient information is
+retained to replay precisely the setup, build, and execution steps. Historically, 
+most FLASH runs have only retained and published the information required to 
+evaluate the execution phase. Reproducibility in this context does not encompass
+*replicability*, or the capability to produce bit-identical binaries computed on 
+exactly the same hardware. Replication concerns are well beyond the scope of flmake.
 
 Previous workflow management tools have been written for FLASH.  (For example, the
 "Milad system" was implemented entirely in Makefiles.)  However, none of the prior
@@ -53,42 +59,96 @@ attempts have placed reproducibility as their primary concern.  This is in part 
 fully capturing the setup metadata required alterations to the build system.
 
 The development of flmake started by rewriting the existing build system
-to allow FLASH to be run outside of the mainline subversion repository.  It separates out
-a project (or simulation) directory independent of the FLASH source directory.  This
-directory is typically under its own version control.
+to allow FLASH to be run outside of the mainline subversion repository. 
+It separates out a project (or simulation) directory independent of the FLASH source 
+directory. This directory is typically under separate version control.
 
 For each of the important tasks (setup, build, run, etc), a sidecar metadata
 *description* file is either initialized or modified.  This is a simple
 dictionary-of-dictionaries JSON file which stores the environment of the
-system and the state of the code when each flmake command is run.  This metadata includes
+system and the state of the code when each flmake command is run. This metadata includes
 the version information of both the FLASH mainline and project repositories.
 However, it also may include all local modifications since the last commit.
 A patch is automatically generated using standard posix utilities and stored directly 
-in the description.
+in the description. Thus flmake does not solely rely on the version 
+control system to enable reproducibility.
 
-Along with universally unique identifiers, logging, and Python run control files, the
-flmake utility may use the description files to fully reproduce a simulation by
-re-executing each command in its original state.  While ``flmake reproduce``
-makes a useful debugging tool, it fundamentally increases the scientific merit of
-FLASH simulations.
+Along with universally unique identifiers (UUIDs), logging, and Python run control 
+files, the flmake utility may use the description files to fully reproduce a 
+simulation by re-executing each command in its original state.  
+This replay feature is precisely what the ``flmake reproduce`` command implements.
 
-The methods described herein may be used whenever
-source code itself is distributed.   While this is true for FLASH (uncommon amongst compiled
-codes), most Python packages also distribute their source.  Therefore the same
-reproducibility strategy is applicable and highly recommended for Python simulation codes.
-Thus flmake shows that reproducibility - which is notably absent from most computational science
-projects - is easily attainable using only version control, Python standard library modules, 
-and ever-present command line utilities.
+The methods for computing and storing complete description files may be used 
+in any situation where the source code of a simulator is distributed. They are not
+FLASH specific, though they will be presented here using flmake as an example.
+While distributing the source is needed for FLASH (uncommon amongst compiled
+codes), most Python packages also do so.  Therefore the same
+reproducibility strategy is applicable and highly recommended for Python 
+simulation codes. Thus flmake shows that reproducibility tools - which are notably 
+absent from most computational science
+projects - is easily attainable using only version control, the Python standard 
+library modules, and ever-present unix tools.
 
+Why Reproducibility is Important
+----------------------------------
+The process by which scientific software is written is not typically 
+itself subject to the rigors of the scientific method.  The vaulted method contains 
+components of prediction, experimentation, duplication, analysis, and openness 
+[GODFREY-SMITH]_.  While software engineers often engage in such activities when 
+programming, scientific developers usually forgo these methods, often to their 
+detriment [WILSON]_.
+
+Whatever the reason for this may be - ignorance, sloth, or other deadly sins - 
+the impetus for adopting modern software development practices only increases 
+every year.  The evolution of tools such as version control and environment 
+capturing mechanisms (such as virtual machines/hypervisors) enable researchers to 
+more easily retain information about software during and after production.  
+
+Therefore the scientific computing landscape is such that there are presently the
+tools to have fully reproducible simulations.  However, most scientists
+choose to not utilize these technologies. This situation is as dreadful as to a 
+chemist not keeping a lab notebook.  The lack of software reproducibility means that 
+many solutions to science
+problems garnered through computational means are relegated to the realm of technical 
+achievements.  Irreproducible results may be novel and interesting but they are not 
+science.  Unlike the current paradigm of 
+computing-around-science, or 
+*periscientific computing*,
+reproducibility is a keystone of 
+*diacomputational science* (computing-throughout-science).
+
+In periscientific computing there may exist a partition between expert software 
+developers and expert scientists, each of whom must learn to partially speak the 
+language of the other camp.   Alternatively, when expert software engineers are not 
+available, ill-equipped scientists perform only the bare minimum development to 
+solve computing problems.  
+
+On the other hand, in diacomputational science, software exists as a substrate on top of 
+which science and engineering problems are solved.  Whether theoretical, simulation, 
+or experimental problems are at hand the scientist has a working knowledge of 
+computing tools available and an understanding of how to use them responsibly.  
+While the level of education required for 
+diacomputational science may seem extreme in a constantly changing software ecosystem, 
+this is in fact no greater than what is currently 
+expect from scientists with regard to Statistics [WILSON]_.
+
+Reproducibility is not the only challenge that computational science faces.
+Open access to results - itself is a hotly contested issue [VRIEZE]_ - is 
+another a key component that has yet to be sufficiently addressed. 
+However, for the reproducibility question the answer seems to be the design and
+adoption of better tools. If this is true then flmake provides a way to 
+bridge FLASH and its reproducibility concerns. It also serves as example 
+feature set that should be considered in any architecture discussions for 
+new codes.
 
 New Workflow Features
 ----------------------
-As with many predictive science codes, managing FLASH simulations may be a tedious 
+Managing FLASH simulations may be a tedious 
 task for both new and experienced users.  The flmake command line utility eases the 
 simulation burden and shortens the development cycle by providing a modular tool 
 which implements many common elements of a FLASH workflow.  At each stage 
-this tool captures necessary metadata about the task which it is performing.  Thus
-flmake encapsulates the following operations:
+this tool automatically and transparently captures necessary metadata about the 
+task which it is performing.  Thus flmake encapsulates the following operations:
 
 * setup/configuration,
 * building,
@@ -125,7 +185,7 @@ Source & Project Paths Searching
 =====================================
 After creating a project directory, the simulation source files must be assembled using
 the flmake setup command.  This is analogous to executing the traditional setup script. 
-For example, to run the classic Sedov problem:
+For example, to run the classic Sedov problem [SEDOV]_:
 
 .. raw:: latex
 
@@ -425,76 +485,6 @@ Next, create and run the simulation:
     \vspace{1em}
 
 
-Why Reproducibility is Important
-----------------------------------
-True to its part of speech, much of \`scientific computing' has the trappings of 
-science in that it is code produced to solve problems in (big-\`S') Science.  
-However, the process by which said programs are written is not typically 
-itself subject to the rigors of the scientific method.  The vaulted method contains 
-components of prediction, experimentation, duplication, analysis, and openness 
-[GODFREY-SMITH]_.  While software engineers often engage in such activities when 
-programming, scientific developers usually forgo these methods, often to their 
-detriment [WILSON]_.
-
-Whatever the reason for this may be - ignorance, sloth, or other deadly sins - 
-the impetus for adopting modern software development practices only increases 
-every year.  The evolution of tools such as version control and environment 
-capturing mechanisms (such as virtual machines/hypervisors) enable researchers to 
-more easily retain information about software during and after production.  
-Furthermore, the apparent end of Silicon-based Moore's Law has necessitated a move
-to more exotic architectures and increased parallelism to see further speed 
-increases [MIMS]_. This implies that code that runs on machines now may not
-be able to run on future processors without significant refactoring.  
-
-Therefore the scientific computing landscape is such that there are presently the
-tools and the need to have fully reproducible simulations.  However, most scientists
-choose to not utilize these technologies.  This is akin to a chemist not keeping a
-lab notebook.  The lack of reproducibility means that many solutions to science
-problems garnered through computational means are relegated to the realm of technical 
-achievements.  Irreproducible results may be novel and interesting but they are not 
-science.  Unlike the current paradigm of 
-computing-about-science, or 
-*periscientific computing*,
-reproducibility is a keystone of 
-*diacomputational science* (computing-throughout-science).
-
-In periscientific computing there may exist a partition between expert software 
-developers and expert scientists, each of whom must learn to partially speak the 
-language of the other camp.   Alternatively, when expert software engineers are not available, 
-canonically ill-equipped scientists perform only the bare minimum development to 
-solve computing problems.  
-
-On the other hand, in diacomputational science, software exists as a substrate on top of 
-which science and engineering problems are solved.  Whether theoretical, simulation, 
-or experimental problems are at hand the scientist has a working knowledge of 
-computing tools available and an understanding of how to use them responsibly.  
-While the level of education required for 
-diacomputational science may seem extreme in a constantly changing software ecosystem, 
-this is in fact no greater than what is currently 
-expect from scientists with regard to Statistics [WILSON]_.
-
-With the extreme cases illustrated above, there are some notable exceptions.  The first
-is that there are researchers who are cognizant and respectful of these reproducibility
-issues.  The efforts of these scientists help paint a less dire picture than the 
-one framed here.  
-
-The second exception is that while reproducibility is a key feature of fundamental science 
-it is not the only one.  For example, openness is another point whereby the statement
-"If a result is not produced openly then it is not science" holds.  Open access to 
-results - itself is a hotly contested issue [VRIEZE]_ - is certainly a component of 
-computational science.  Though having open and available code 
-is likely critical for pure science, it often lies outside the scope of normal research 
-practice.  This is for a variety of reasons, including the fear that releasing code too 
-early or at all will negatively impact personal publication records.  Tackling the 
-openness issue must be left for another paper.
-
-In summary, reproducibility is important because without it any results generated are 
-periscientific.  To achieve diacomputational science there exist computational tools to aid 
-in this endeavor, as in analogue science there are physical solutions.  Though it
-is not the only criticism to be levied against modern research practices, irreproducibility
-is one that affects computation acutely and uniquely as compared to other spheres.
-
-
 The Reproduce Command
 ----------------------------
 
@@ -765,7 +755,7 @@ and run - FLASH simulations may be fully reproduced in the future.   Doing
 so required a wrapper utility called flmake.  The writing of this tool 
 involved an overhaul of the existing system.  Though portions of flmake 
 took inspiration from previous systems none were as comprehensive.  
-Additionally, to the author's knowledge, no previous system included
+Additionally, to the author's knowledge, no previous system for FLASH included
 a mechanism to non-destructively execute previous command incarnations  
 similar to flmake reproduce.
 
@@ -773,7 +763,7 @@ The creation of flmake itself was done as an exercise in reproducibility.
 What has been shown here is that it is indeed possible to increase the
 merit of simulation science through a relatively small, though thoughtful, amount 
 of code.  It is highly encouraged that the methods described here be 
-copied by other software-in-science project [*]_.  
+copied by other software-in-science projects [*]_.  
 
 Moreover, in the process of determining what flmake *should* be, several 
 fundamental questions about reproducibility itself were raised.  These
@@ -825,6 +815,7 @@ References
             May 2012, Technology Review, MIT.
 .. [SCHMIDT] Gavin A. Schmidt, "On replication," RealClimate, Feb 2009, 
              http://www.realclimate.org/index.php/archives/2009/02/on-replication/langswitch_lang/in/.
+.. [SEDOV] Sedov, L. I., "Propagation of strong shock waves," Journal of Applied Mathematics and Mechanics, Vol. 10, pages 241 - 250 (1946).
 .. [SVN] Ben Collins-Sussman, Brian W. Fitzpatrick, C. Michael Pilato (2011). 
          "Version Control with Subversion: For Subversion 1.7". O'Reilly.
 .. [VLABNB] Rubacha, M.; Rattan, A. K.; Hosselet, S. C. (2011). *A Review of Electronic 
